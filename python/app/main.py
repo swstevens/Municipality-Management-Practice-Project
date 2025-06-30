@@ -1,10 +1,12 @@
-# app/main.py
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
+import os
 
 # Change relative imports to absolute imports
 import models
@@ -34,6 +36,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create static directory if it doesn't exist
+static_dir = "static"
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+# Mount static files (for any additional static assets)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 # Root endpoint
 @app.get("/")
 async def root():
@@ -48,6 +58,18 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow()}
 
+# Dashboard HTML page
+@app.get("/dashboard", response_class=HTMLResponse)
+async def get_dashboard():
+    """Serve the water utility dashboard HTML page"""
+    try:
+        with open("dashboard.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    except FileNotFoundError:
+        return HTMLResponse(
+            content="<h1>Dashboard not found</h1><p>Please create dashboard.html file</p>", 
+            status_code=404
+        )
 # Authentication endpoints
 @app.post("/auth/register", response_model=schemas.UserResponse)
 def register_user(
