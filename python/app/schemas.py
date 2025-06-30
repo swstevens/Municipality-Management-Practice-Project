@@ -4,6 +4,7 @@ from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
 
+# Change relative imports to absolute imports
 from models import UserRole, AlertStatus
 
 # User schemas
@@ -21,12 +22,19 @@ class UserCreate(UserBase):
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         return v
+    
+    @field_validator('username')
+    @classmethod
+    def validate_username(cls, v):
+        if len(v) < 3:
+            raise ValueError('Username must be at least 3 characters long')
+        return v
 
 class UserResponse(UserBase):
     id: int
     is_active: bool
     created_at: datetime
-    last_login: Optional[datetime]
+    last_login: Optional[datetime] = None
     
     model_config = {"from_attributes": True}
 
@@ -60,7 +68,7 @@ class WaterQualityReadingCreate(WaterQualityReadingBase):
 class WaterQualityReadingResponse(WaterQualityReadingBase):
     id: int
     created_at: datetime
-    alert_status: AlertStatus
+    alert_status: Optional[AlertStatus] = None
     
     model_config = {"from_attributes": True}
 
@@ -97,6 +105,6 @@ class DashboardData(BaseModel):
     alert_count: int
     avg_ph_level: float
     avg_chlorine_level: float
-    recent_alerts: List[WaterQualityReadingResponse]
+    recent_alerts: List[dict]  # Use dict instead of WaterQualityReadingResponse for flexibility
     sensor_count: int
     last_updated: datetime

@@ -412,19 +412,44 @@
                 config.headers['Authorization'] = `Bearer ${authToken}`;
             }
 
+            console.log(`API Call: ${config.method || 'GET'} ${url}`);
+            if (config.body) {
+                console.log('Request body:', config.body);
+            }
+
             try {
                 const response = await fetch(url, config);
                 
+                console.log(`Response status: ${response.status}`);
+                
                 if (!response.ok) {
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                        console.log('Error response:', errorData);
+                    } catch (e) {
+                        errorData = { detail: `HTTP ${response.status}` };
+                    }
+                    
                     if (response.status === 401) {
                         logout();
                         throw new Error('Authentication failed - please login again');
                     }
-                    const errorData = await response.json().catch(() => ({}));
+                    
+                    // Handle validation errors (422)
+                    if (response.status === 422 && errorData.detail) {
+                        if (Array.isArray(errorData.detail)) {
+                            const errors = errorData.detail.map(err => `${err.loc?.join('.')}: ${err.msg}`).join(', ');
+                            throw new Error(`Validation error: ${errors}`);
+                        }
+                    }
+                    
                     throw new Error(errorData.detail || `HTTP ${response.status}`);
                 }
                 
-                return await response.json();
+                const responseData = await response.json();
+                console.log('Success response:', responseData);
+                return responseData;
             } catch (error) {
                 console.error('API call failed:', error);
                 throw error;
@@ -440,19 +465,37 @@
                 return;
             }
 
+            // Ensure email is valid - use example.com (RFC compliant test domain)
+            const email = `${username}@example.com`;
+            
+            // Validate input
+            if (username.length < 3) {
+                showError('Username must be at least 3 characters long');
+                return;
+            }
+            
+            if (password.length < 8) {
+                showError('Password must be at least 8 characters long');
+                return;
+            }
+
+            console.log('Attempting registration with:', { username, email, password: '[hidden]', role: 'operator' });
+
             try {
-                await apiCall('/auth/register', {
+                const response = await apiCall('/auth/register', {
                     method: 'POST',
                     body: JSON.stringify({
                         username: username,
-                        email: `${username}@example.com`,
+                        email: email,
                         password: password,
                         role: 'operator'
                     })
                 });
                 
+                console.log('Registration successful:', response);
                 showError('✅ Registration successful! You can now login.', 'success');
             } catch (error) {
+                console.error('Registration failed:', error);
                 showError(`❌ Registration failed: ${error.message}`);
             }
         }

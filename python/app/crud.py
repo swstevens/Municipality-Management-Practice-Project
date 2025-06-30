@@ -1,12 +1,13 @@
+# app/crud.py
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func, desc
 from typing import List, Optional
 from datetime import datetime, timedelta
 
+# Change relative imports to absolute imports
 import models
 import schemas
 from auth import get_password_hash, verify_password
-
 
 # User CRUD
 def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
@@ -99,12 +100,30 @@ def get_dashboard_stats(db: Session) -> dict:
                      .distinct()\
                      .count()
     
+    # Add alert_status to recent alerts for the response
+    alert_readings_with_status = []
+    for alert in alert_readings[:10]:  # Last 10 alerts
+        # Create a copy with alert_status added
+        alert_dict = {
+            'id': alert.id,
+            'sensor_id': alert.sensor_id,
+            'location': alert.location,
+            'ph_level': alert.ph_level,
+            'chlorine_level': alert.chlorine_level,
+            'turbidity': alert.turbidity,
+            'temperature': alert.temperature,
+            'timestamp': alert.timestamp,
+            'created_at': alert.created_at,
+            'alert_status': alert.get_alert_status()
+        }
+        alert_readings_with_status.append(alert_dict)
+    
     return {
         'total_readings': len(recent_readings),
         'alert_count': len(alert_readings),
         'avg_ph_level': round(avg_ph, 2),
         'avg_chlorine_level': round(avg_chlorine, 2),
-        'recent_alerts': alert_readings[:10],  # Last 10 alerts
+        'recent_alerts': alert_readings_with_status,
         'sensor_count': sensor_count,
         'last_updated': datetime.utcnow()
     }
